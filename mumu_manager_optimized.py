@@ -96,35 +96,19 @@ def apply_neo_style(app: QApplication, mode: str):
     if mode == "dark":
         app.setPalette(NeoPalette.dark())
         app.setStyleSheet("""
-            /* CSS Variables for color consistency */
-            * {
-                --bg-color: #1b1d29;
-                --card-background: #1f233b;
-                --border-color: #2a2e4a;
-                --border-color-light: #252a45;
-                --text-color: 232, 236, 255;
-                --highlight: #8aa1ff;
-                --highlight-soft: #39407a;
-                --primary: #6c4cff;
-                --primary-dark: #5a3fe0;
-                --success: #16a34a;
-                --danger: #dc2626;
-                --warning: #eab308;
-            }
-            
             QWidget { font-family: "Segoe UI"; font-size: 10pt; }
             
             /* Enhanced Neumorphic containers */
             .neo-card {
-                background: var(--card-background);
+                background: #1f233b;
                 border-radius: 16px;
                 padding: 16px;
-                border: 1px solid var(--border-color);
+                border: 1px solid #2a2e4a;
             }
             
             /* Improved sidebar */
             QFrame#sidebar {
-                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 var(--primary), stop:1 var(--primary-dark));
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #6c4cff, stop:1 #5a3fe0);
                 border-radius: 18px;
                 margin: 12px;
             }
@@ -157,25 +141,25 @@ def apply_neo_style(app: QApplication, mode: str):
             
             /* Better form controls */
             QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QComboBox {
-                background: var(--card-background);
-                border: 1px solid var(--border-color);
+                background: #1f233b;
+                border: 1px solid #2a2e4a;
                 border-radius: 10px;
                 padding: 10px;
-                color: rgba(var(--text-color), 1);
-                selection-background-color: var(--highlight-soft);
+                color: rgb(232, 236, 255);
+                selection-background-color: #39407a;
             }
             
             QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus, QComboBox:focus {
-                border: 1px solid var(--highlight);
+                border: 1px solid #8aa1ff;
             }
             
             /* Improved buttons */
             QPushButton, QToolButton {
-                background: var(--card-background);
-                border: 1px solid var(--border-color);
+                background: #1f233b;
+                border: 1px solid #2a2e4a;
                 border-radius: 10px;
                 padding: 10px 14px;
-                color: rgba(var(--text-color), 1);
+                color: rgb(232, 236, 255);
                 min-height: 36px;
             }
             
@@ -188,7 +172,7 @@ def apply_neo_style(app: QApplication, mode: str):
             }
             
             QPushButton.primary {
-                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 var(--primary), stop:1 var(--primary-dark));
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #6c4cff, stop:1 #5a3fe0);
                 color: white;
                 font-weight: 600;
                 border: none;
@@ -207,26 +191,26 @@ def apply_neo_style(app: QApplication, mode: str):
                 font-size: 9pt;
             }
             
-            QLabel.badge.running { background: var(--success); }
-            QLabel.badge.offline { background: var(--danger); }
+            QLabel.badge.running { background: #16a34a; }
+            QLabel.badge.offline { background: #dc2626; }
             
             /* Table improvements */
             QTableView {
                 border: none;
-                gridline-color: var(--border-color);
-                selection-background-color: var(--highlight-soft);
+                gridline-color: #2a2e4a;
+                selection-background-color: #39407a;
                 alternate-row-colors: true;
             }
             
             QTableView::item {
                 padding: 8px 4px;
-                border-bottom: 1px solid var(--border-color-light);
+                border-bottom: 1px solid #252a45;
             }
             
             QHeaderView::section {
-                background: var(--card-background);
+                background: #1f233b;
                 border: none;
-                border-bottom: 2px solid var(--border-color);
+                border-bottom: 2px solid #2a2e4a;
                 font-weight: 600;
                 padding: 12px 8px;
             }
@@ -240,48 +224,48 @@ def apply_neo_style(app: QApplication, mode: str):
                 padding: 12px 20px;
                 margin: 4px 2px;
                 border-radius: 12px;
-                background: var(--card-background);
+                background: #1f233b;
                 min-width: 120px;
             }
             
             QTabBar::tab:selected {
-                background: var(--highlight-soft);
+                background: #39407a;
                 color: white;
                 font-weight: 600;
             }
             
             /* Improved progress bar */
             QProgressBar {
-                border: 1px solid var(--border-color);
+                border: 1px solid #2a2e4a;
                 border-radius: 10px;
                 text-align: center;
-                background: var(--card-background);
+                background: #1f233b;
                 padding: 2px;
                 height: 18px;
             }
             
             QProgressBar::chunk {
-                background-color: var(--primary);
+                background-color: #6c4cff;
                 border-radius: 8px;
             }
             
             /* Scrollbar styling */
             QScrollBar:vertical {
                 border: none;
-                background: rgba(var(--text-color), 0.05);
+                background: rgba(232, 236, 255, 0.05);
                 width: 10px;
                 margin: 0px;
                 border-radius: 5px;
             }
             
             QScrollBar::handle:vertical {
-                background: rgba(var(--text-color), 0.2);
+                background: rgba(232, 236, 255, 0.2);
                 border-radius: 5px;
                 min-height: 20px;
             }
             
             QScrollBar::handle:vertical:hover {
-                background: rgba(var(--text-color), 0.3);
+                background: rgba(232, 236, 255, 0.3);
             }
             
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
@@ -290,20 +274,20 @@ def apply_neo_style(app: QApplication, mode: str):
             
             QScrollBar:horizontal {
                 border: none;
-                background: rgba(var(--text-color), 0.05);
+                background: rgba(232, 236, 255, 0.05);
                 height: 10px;
                 margin: 0px;
                 border-radius: 5px;
             }
             
             QScrollBar::handle:horizontal {
-                background: rgba(var(--text-color), 0.2);
+                background: rgba(232, 236, 255, 0.2);
                 border-radius: 5px;
                 min-width: 20px;
             }
             
             QScrollBar::handle:horizontal:hover {
-                background: rgba(var(--text-color), 0.3);
+                background: rgba(232, 236, 255, 0.3);
             }
             
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
@@ -312,8 +296,8 @@ def apply_neo_style(app: QApplication, mode: str):
             
             /* Menu styling */
             QMenu {
-                background: var(--card-background);
-                border: 1px solid var(--border-color);
+                background: #1f233b;
+                border: 1px solid #2a2e4a;
                 border-radius: 10px;
                 padding: 5px;
             }
@@ -324,7 +308,7 @@ def apply_neo_style(app: QApplication, mode: str):
             }
             
             QMenu::item:selected {
-                background: var(--highlight-soft);
+                background: #39407a;
             }
             
             QMenu::icon {
@@ -333,49 +317,33 @@ def apply_neo_style(app: QApplication, mode: str):
             
             /* Status bar */
             QStatusBar {
-                background: var(--card-background);
-                color: rgba(var(--text-color), 0.7);
-                border-top: 1px solid var(--border-color);
+                background: #1f233b;
+                color: rgba(232, 236, 255, 0.7);
+                border-top: 1px solid #2a2e4a;
             }
             
             /* Dialog styling */
             QDialog {
-                background: var(--bg-color);
+                background: #1b1d29;
             }
         """)
     else:
         # Light theme CSS with similar structure but light colors
         app.setPalette(NeoPalette.light())
         app.setStyleSheet("""
-            /* Light theme CSS Variables */
-            * {
-                --bg-color: #eef0ff;
-                --card-background: #ffffff;
-                --border-color: #e5e8ff;
-                --border-color-light: #eef1ff;
-                --text-color: 30, 30, 45;
-                --highlight: #6c4cff;
-                --highlight-soft: #dfe5ff;
-                --primary: #6c4cff;
-                --primary-dark: #5a3fe0;
-                --success: #16a34a;
-                --danger: #dc2626;
-                --warning: #eab308;
-            }
-            
             QWidget { font-family: "Segoe UI"; font-size: 10pt; }
             
             /* Enhanced Neumorphic containers */
             .neo-card {
-                background: var(--card-background);
+                background: #ffffff;
                 border-radius: 16px;
                 padding: 16px;
-                border: 1px solid var(--border-color);
+                border: 1px solid #e5e8ff;
             }
             
             /* Improved sidebar */
             QFrame#sidebar {
-                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 var(--primary), stop:1 var(--primary-dark));
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #6c4cff, stop:1 #5a3fe0);
                 border-radius: 18px;
                 margin: 12px;
             }
@@ -408,25 +376,25 @@ def apply_neo_style(app: QApplication, mode: str):
             
             /* Better form controls */
             QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QComboBox {
-                background: var(--card-background);
-                border: 1px solid var(--border-color);
+                background: #ffffff;
+                border: 1px solid #e5e8ff;
                 border-radius: 10px;
                 padding: 10px;
-                color: rgba(var(--text-color), 1);
-                selection-background-color: var(--highlight-soft);
+                color: rgb(30, 30, 45);
+                selection-background-color: #dfe5ff;
             }
             
             QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QTextEdit:focus, QComboBox:focus {
-                border: 1px solid var(--highlight);
+                border: 1px solid #6c4cff;
             }
             
             /* Improved buttons */
             QPushButton, QToolButton {
-                background: var(--card-background);
-                border: 1px solid var(--border-color);
+                background: #ffffff;
+                border: 1px solid #e5e8ff;
                 border-radius: 10px;
                 padding: 10px 14px;
-                color: rgba(var(--text-color), 1);
+                color: rgb(30, 30, 45);
                 min-height: 36px;
             }
             
@@ -439,7 +407,7 @@ def apply_neo_style(app: QApplication, mode: str):
             }
             
             QPushButton.primary {
-                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 var(--primary), stop:1 var(--primary-dark));
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #6c4cff, stop:1 #5a3fe0);
                 color: white;
                 font-weight: 600;
                 border: none;
@@ -458,26 +426,26 @@ def apply_neo_style(app: QApplication, mode: str):
                 font-size: 9pt;
             }
             
-            QLabel.badge.running { background: var(--success); }
-            QLabel.badge.offline { background: var(--danger); }
+            QLabel.badge.running { background: #16a34a; }
+            QLabel.badge.offline { background: #dc2626; }
             
             /* Table improvements */
             QTableView {
                 border: none;
-                gridline-color: var(--border-color);
-                selection-background-color: var(--highlight-soft);
+                gridline-color: #e5e8ff;
+                selection-background-color: #dfe5ff;
                 alternate-row-colors: true;
             }
             
             QTableView::item {
                 padding: 8px 4px;
-                border-bottom: 1px solid var(--border-color-light);
+                border-bottom: 1px solid #eef1ff;
             }
             
             QHeaderView::section {
-                background: var(--card-background);
+                background: #ffffff;
                 border: none;
-                border-bottom: 2px solid var(--border-color);
+                border-bottom: 2px solid #e5e8ff;
                 font-weight: 600;
                 padding: 12px 8px;
             }
@@ -491,50 +459,50 @@ def apply_neo_style(app: QApplication, mode: str):
                 padding: 12px 20px;
                 margin: 4px 2px;
                 border-radius: 12px;
-                background: var(--card-background);
-                border: 1px solid var(--border-color);
+                background: #ffffff;
+                border: 1px solid #e5e8ff;
                 min-width: 120px;
             }
             
             QTabBar::tab:selected {
-                background: var(--highlight-soft);
-                color: rgba(var(--text-color), 1);
+                background: #dfe5ff;
+                color: rgb(30, 30, 45);
                 font-weight: 600;
-                border: 1px solid var(--highlight);
+                border: 1px solid #6c4cff;
             }
             
             /* Improved progress bar */
             QProgressBar {
-                border: 1px solid var(--border-color);
+                border: 1px solid #e5e8ff;
                 border-radius: 10px;
                 text-align: center;
-                background: var(--card-background);
+                background: #ffffff;
                 padding: 2px;
                 height: 18px;
             }
             
             QProgressBar::chunk {
-                background-color: var(--primary);
+                background-color: #6c4cff;
                 border-radius: 8px;
             }
             
             /* Scrollbar styling */
             QScrollBar:vertical {
                 border: none;
-                background: rgba(var(--text-color), 0.05);
+                background: rgba(30, 30, 45, 0.05);
                 width: 10px;
                 margin: 0px;
                 border-radius: 5px;
             }
             
             QScrollBar::handle:vertical {
-                background: rgba(var(--text-color), 0.2);
+                background: rgba(30, 30, 45, 0.2);
                 border-radius: 5px;
                 min-height: 20px;
             }
             
             QScrollBar::handle:vertical:hover {
-                background: rgba(var(--text-color), 0.3);
+                background: rgba(30, 30, 45, 0.3);
             }
             
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
@@ -543,20 +511,20 @@ def apply_neo_style(app: QApplication, mode: str):
             
             QScrollBar:horizontal {
                 border: none;
-                background: rgba(var(--text-color), 0.05);
+                background: rgba(30, 30, 45, 0.05);
                 height: 10px;
                 margin: 0px;
                 border-radius: 5px;
             }
             
             QScrollBar::handle:horizontal {
-                background: rgba(var(--text-color), 0.2);
+                background: rgba(30, 30, 45, 0.2);
                 border-radius: 5px;
                 min-width: 20px;
             }
             
             QScrollBar::handle:horizontal:hover {
-                background: rgba(var(--text-color), 0.3);
+                background: rgba(30, 30, 45, 0.3);
             }
             
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
@@ -565,8 +533,8 @@ def apply_neo_style(app: QApplication, mode: str):
             
             /* Menu styling */
             QMenu {
-                background: var(--card-background);
-                border: 1px solid var(--border-color);
+                background: #ffffff;
+                border: 1px solid #e5e8ff;
                 border-radius: 10px;
                 padding: 5px;
             }
@@ -577,7 +545,7 @@ def apply_neo_style(app: QApplication, mode: str):
             }
             
             QMenu::item:selected {
-                background: var(--highlight-soft);
+                background: #dfe5ff;
             }
             
             QMenu::icon {
@@ -586,14 +554,14 @@ def apply_neo_style(app: QApplication, mode: str):
             
             /* Status bar */
             QStatusBar {
-                background: var(--card-background);
-                color: rgba(var(--text-color), 0.7);
-                border-top: 1px solid var(--border-color);
+                background: #ffffff;
+                color: rgba(30, 30, 45, 0.7);
+                border-top: 1px solid #e5e8ff;
             }
             
             /* Dialog styling */
             QDialog {
-                background: var(--bg-color);
+                background: #eef0ff;
             }
         """)
 
@@ -815,7 +783,7 @@ class AutomationDialog(QDialog):
         
         # Thông tin mô tả
         info_label = QLabel("Tính năng này cho phép khởi động nhiều VM theo đợt, giúp giảm tải hệ thống.")
-        info_label.setStyleSheet("color: rgba(var(--text-color), 0.7); font-style: italic; margin-top: 5px;")
+        info_label.setStyleSheet("color: rgba(200, 200, 200, 0.7); font-style: italic; margin-top: 5px;")
         info_label.setWordWrap(True)
         main_layout.addWidget(info_label)
         
@@ -1060,7 +1028,7 @@ class BatchEditDialog(QDialog):
         config_layout.addLayout(imei_group)
         
         imei_help = QLabel("Nhập \"random\" để tạo ngẫu nhiên hoặc nhập 15 chữ số IMEI cụ thể")
-        imei_help.setStyleSheet("color: rgba(var(--text-color), 0.6); font-style: italic; font-size: 9pt; margin-left: 24px; margin-bottom: 8px;")
+        imei_help.setStyleSheet("color: rgba(200, 200, 200, 0.6); font-style: italic; font-size: 9pt; margin-left: 24px; margin-bottom: 8px;")
         config_layout.addWidget(imei_help)
         
         # MAC
@@ -1074,7 +1042,7 @@ class BatchEditDialog(QDialog):
         config_layout.addLayout(mac_group)
         
         mac_help = QLabel("Nhập \"random\", mẫu như \"AA:BB:CC:*\" hoặc địa chỉ MAC đầy đủ")
-        mac_help.setStyleSheet("color: rgba(var(--text-color), 0.6); font-style: italic; font-size: 9pt; margin-left: 24px;")
+        mac_help.setStyleSheet("color: rgba(200, 200, 200, 0.6); font-style: italic; font-size: 9pt; margin-left: 24px;")
         config_layout.addWidget(mac_help)
         
         main_layout.addWidget(config_card)
@@ -1211,13 +1179,13 @@ class StatCard(QFrame):
         lay.setSpacing(6)
         
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-weight: 600; color: rgba(var(--text-color), 0.7)")
+        title_label.setStyleSheet("font-weight: 600; color: rgba(200, 200, 200, 0.7)")
         
         value_label = QLabel(value)
         value_label.setStyleSheet("font-size: 24px; font-weight: 700; margin-top: 4px")
         
         subtitle_label = QLabel(subtitle)
-        subtitle_label.setStyleSheet("color: rgba(var(--text-color), 0.5); font-size: 9pt")
+        subtitle_label.setStyleSheet("color: rgba(200, 200, 200, 0.5); font-size: 9pt")
         
         lay.addWidget(title_label)
         lay.addWidget(value_label)
