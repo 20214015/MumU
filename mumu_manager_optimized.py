@@ -225,6 +225,7 @@ def apply_neo_style(app: QApplication, mode: str):
                 margin: 4px 2px;
                 border-radius: 12px;
                 background: #1f233b;
+                border: 1px solid #2a2e4a;
                 min-width: 120px;
             }
             
@@ -232,6 +233,7 @@ def apply_neo_style(app: QApplication, mode: str):
                 background: #39407a;
                 color: white;
                 font-weight: 600;
+                border: 1px solid #8aa1ff;
             }
             
             /* Improved progress bar */
