@@ -1,0 +1,87 @@
+{
+  "performance_presets": {
+    "small_scale": {
+      "description": "Tối ưu cho 1-100 instances",
+      "max_instances": 100,
+      "batch_size": 10,
+      "instance_delay": 1.0,
+      "batch_delay": 5.0,
+      "max_concurrent": 5,
+      "chunk_size": 20,
+      "enable_shadows": true,
+      "cache_size": 100
+    },
+    "medium_scale": {
+      "description": "Tối ưu cho 100-1000 instances",
+      "max_instances": 1000,
+      "batch_size": 25,
+      "instance_delay": 0.5,
+      "batch_delay": 3.0,
+      "max_concurrent": 8,
+      "chunk_size": 50,
+      "enable_shadows": true,
+      "cache_size": 500
+    },
+    "large_scale": {
+      "description": "Tối ưu cho 1000-5000 instances",
+      "max_instances": 5000,
+      "batch_size": 50,
+      "instance_delay": 0.3,
+      "batch_delay": 2.0,
+      "max_concurrent": 12,
+      "chunk_size": 100,
+      "enable_shadows": false,
+      "cache_size": 1000
+    },
+    "massive_scale": {
+      "description": "Tối ưu cho 5000+ instances (10k+)",
+      "max_instances": 10000,
+      "batch_size": 100,
+      "instance_delay": 0.1,
+      "batch_delay": 1.0,
+      "max_concurrent": 20,
+      "chunk_size": 200,
+      "enable_shadows": false,
+      "cache_size": 1000,
+      "use_virtual_scrolling": true,
+      "pagination_size": 100,
+      "memory_cleanup_interval": 300
+    }
+  },
+  "optimization_tips": {
+    "for_10k_instances": [
+      "Sử dụng batch_size >= 50 để tăng hiệu suất",
+      "Giảm instance_delay xuống 0.1-0.5 giây",
+      "Tắt shadow effects để tiết kiệm bộ nhớ",
+      "Sử dụng virtual scrolling cho bảng instances",
+      "Kích hoạt memory cleanup định kỳ",
+      "Sử dụng pagination thay vì load toàn bộ",
+      "Tăng max_concurrent lên 15-20 cho xử lý song song",
+      "Sử dụng bulk operations khi có thể"
+    ],
+    "memory_management": [
+      "Cache tối đa 1000 instances",
+      "Cleanup cache mỗi 5 phút",
+      "Lazy load instance data",
+      "Giới hạn số widgets có shadow effect",
+      "Sử dụng pagination để giảm memory footprint"
+    ],
+    "ui_performance": [
+      "Tắt animations với dataset lớn",
+      "Sử dụng virtual scrolling",
+      "Lazy rendering cho items không visible",
+      "Debounce search input",
+      "Optimize table cell rendering"
+    ]
+  },
+  "recommended_system_specs": {
+    "for_10k_instances": {
+      "min_ram": "16GB",
+      "recommended_ram": "32GB",
+      "min_cpu_cores": 8,
+      "recommended_cpu_cores": 16,
+      "storage": "SSD recommended",
+      "network": "Gigabit for bulk operations"
+    }
+  }
+}

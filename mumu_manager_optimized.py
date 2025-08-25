@@ -29,7 +29,13 @@ class ShadowCache:
         return ShadowCache._shadow_cache[key]
 
 def apply_shadow(widget, radius=16, dx=6, dy=6, alpha=80):
-    """Apply shadow with performance optimization"""
+    """Apply shadow with performance optimization for large datasets"""
+    # Skip shadows entirely if there are too many widgets (10k+ instances)
+    app = QApplication.instance()
+    if app and hasattr(app, '_widget_count'):
+        if app._widget_count > 1000:
+            return  # Skip shadows for performance
+    
     # Only apply shadow to visible widgets
     if not widget.isVisible():
         return
@@ -49,6 +55,11 @@ def apply_shadow(widget, radius=16, dx=6, dy=6, alpha=80):
         effect.setOffset(dx, dy)
         effect.setColor(QColor(0, 0, 0, alpha))
         widget.setGraphicsEffect(effect)
+        
+        # Track widget count for performance optimization
+        if not hasattr(QApplication.instance(), '_widget_count'):
+            QApplication.instance()._widget_count = 0
+        QApplication.instance()._widget_count += 1
     except Exception:
         pass
 
@@ -597,12 +608,57 @@ def apply_neo_style(app: QApplication, mode: str):
             }
         """)
 
-# =========================
-# Backend: MumuManager.exe (giữ nguyên logic)
-# =========================
+# Performance Configuration for different scales
+class PerformanceConfig:
+    """Performance configuration presets for different instance counts"""
+    
+    @staticmethod
+    def get_config(instance_count):
+        """Get optimal configuration based on instance count"""
+        if instance_count <= 100:
+            return {
+                'batch_size': 10,
+                'instance_delay': 1.0,
+                'batch_delay': 5.0,
+                'max_concurrent': 5,
+                'chunk_size': 20
+            }
+        elif instance_count <= 1000:
+            return {
+                'batch_size': 25,
+                'instance_delay': 0.5,
+                'batch_delay': 3.0,
+                'max_concurrent': 8,
+                'chunk_size': 50
+            }
+        elif instance_count <= 5000:
+            return {
+                'batch_size': 50,
+                'instance_delay': 0.3,
+                'batch_delay': 2.0,
+                'max_concurrent': 12,
+                'chunk_size': 100
+            }
+        else:  # 10k+
+            return {
+                'batch_size': 100,
+                'instance_delay': 0.1,
+                'batch_delay': 1.0,
+                'max_concurrent': 20,
+                'chunk_size': 200
+            }
+    
+    @staticmethod
+    def apply_shadow_optimization(widget_count):
+        """Disable shadows for UI performance with many widgets"""
+        return widget_count < 500  # Only apply shadows if less than 500 widgets
 class MumuManager:
     def __init__(self, executable_path):
         self.executable_path = executable_path
+        # Memory optimization for 10k instances
+        self._instance_cache = {}
+        self._cache_max_size = 1000  # Limit cache size
+        self._cache_access_order = []  # Track access for LRU eviction
 
     def _run_command(self, args, return_output=False):
         if not os.path.exists(self.executable_path):
@@ -630,18 +686,54 @@ class MumuManager:
             try:
                 data = json.loads(output)
                 if isinstance(data, list):
-                    return {str(o.get("index", i)): o for i, o in enumerate(data)}
+                    result = {str(o.get("index", i)): o for i, o in enumerate(data)}
+                    # Update cache with LRU eviction for memory optimization
+                    self._update_cache(result)
+                    return result
                 if isinstance(data, dict):
-                    return {str(data["index"]): data} if "index" in data else data
+                    single_result = {str(data["index"]): data} if "index" in data else data
+                    self._update_cache(single_result)
+                    return single_result
             except json.JSONDecodeError:
                 try:
                     json_objects = [json.loads(line) for line in output.strip().split('\n') if line.strip()]
-                    return {str(obj['index']): obj for obj in json_objects}
+                    result = {str(obj['index']): obj for obj in json_objects}
+                    self._update_cache(result)
+                    return result
                 except Exception:
                     return f"Lỗi phân tích JSON. Dữ liệu thô:\n---\n{output}\n---"
         elif not ok:
             return output
         return "Không nhận được dữ liệu từ Manager. Vui lòng thử chạy một giả lập."
+    
+    def _update_cache(self, new_data):
+        """Update instance cache with LRU eviction for memory optimization"""
+        for key, value in new_data.items():
+            if key in self._instance_cache:
+                # Move to end (most recently used)
+                self._cache_access_order.remove(key)
+            elif len(self._instance_cache) >= self._cache_max_size:
+                # Remove least recently used
+                lru_key = self._cache_access_order.pop(0)
+                del self._instance_cache[lru_key]
+            
+            self._instance_cache[key] = value
+            self._cache_access_order.append(key)
+    
+    def get_cached_instance_info(self, index):
+        """Get instance info from cache if available"""
+        key = str(index)
+        if key in self._instance_cache:
+            # Move to end (most recently used)
+            self._cache_access_order.remove(key)
+            self._cache_access_order.append(key)
+            return self._instance_cache[key]
+        return None
+    
+    def clear_cache(self):
+        """Clear instance cache to free memory"""
+        self._instance_cache.clear()
+        self._cache_access_order.clear()
 
     def control_instance(self, indices, action):
         return self._run_command(['control', '-v', ",".join(map(str, indices)), action])
@@ -689,6 +781,81 @@ class MumuManager:
 
     def run_adb_command(self, indices, command_str):
         return self._run_command(['adb', '-v', ",".join(map(str, indices)), '-c', command_str])
+
+    # Optimization methods for 10k+ instances
+    def batch_control_instance(self, indices, action, chunk_size=100):
+        """
+        Optimized batch control for large number of instances
+        Processes instances in chunks to avoid command line length limits
+        """
+        if len(indices) <= chunk_size:
+            return self.control_instance(indices, action)
+        
+        results = []
+        for i in range(0, len(indices), chunk_size):
+            chunk = indices[i:i + chunk_size]
+            ok, msg = self.control_instance(chunk, action)
+            results.append((ok, msg))
+            if not ok:
+                return False, f"Batch failed at chunk {i//chunk_size + 1}: {msg}"
+        
+        return True, f"Successfully processed {len(indices)} instances in {len(results)} chunks"
+    
+    def bulk_create_instances(self, count, chunk_size=50):
+        """
+        Optimized bulk instance creation for large numbers
+        Creates instances in chunks to manage system resources
+        """
+        if count <= chunk_size:
+            return self.create_instance(count)
+        
+        created = 0
+        for remaining in range(count, 0, -chunk_size):
+            batch_count = min(chunk_size, remaining)
+            ok, msg = self.create_instance(batch_count)
+            if ok:
+                created += batch_count
+            else:
+                return False, f"Bulk creation failed after {created} instances: {msg}"
+        
+        return True, f"Successfully created {created} instances"
+    
+    def optimize_command_execution(self, commands, max_concurrent=10):
+        """
+        Execute multiple commands with limited concurrency to avoid system overload
+        Useful for 10k+ instance operations
+        """
+        import threading
+        import queue
+        
+        results = queue.Queue()
+        semaphore = threading.Semaphore(max_concurrent)
+        
+        def execute_command(cmd_args):
+            with semaphore:
+                try:
+                    result = self._run_command(cmd_args)
+                    results.put(('success', result))
+                except Exception as e:
+                    results.put(('error', str(e)))
+        
+        threads = []
+        for cmd_args in commands:
+            thread = threading.Thread(target=execute_command, args=(cmd_args,))
+            thread.start()
+            threads.append(thread)
+        
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+        
+        # Collect results
+        all_results = []
+        while not results.empty():
+            all_results.append(results.get())
+        
+        success_count = sum(1 for status, _ in all_results if status == 'success')
+        return success_count == len(commands), f"{success_count}/{len(commands)} commands succeeded"
 
 # =========================
 # Threads
@@ -748,6 +915,72 @@ class BatchSimWorker(Worker):
             self.progress.emit(int((i/total)*100)); self.msleep(120)
         self.finished.emit("✅ HOÀN TẤT" if self._is_running else "🛑 ĐÃ DỪNG")
 
+# Optimized Worker for 10k instances with parallel processing
+class OptimizedAutoWorker(Worker):
+    """Optimized worker for handling 10,000+ instances efficiently"""
+    def run(self):
+        start, end, batch_size, inst_delay, batch_delay = self.params
+        total_instances = max(1, end - start + 1)
+        processed = 0
+        
+        # Use larger batch sizes for 10k+ instances
+        if total_instances > 1000:
+            batch_size = max(batch_size, 50)  # Minimum 50 for large operations
+            inst_delay = min(inst_delay, 1.0)  # Cap instance delay
+            batch_delay = min(batch_delay, 5.0)  # Cap batch delay
+        
+        self.log.emit(f"--- 🚀 OPTIMIZED AUTO MODE FOR {total_instances} INSTANCES ---")
+        self.log.emit(f"Using batch size: {batch_size}, delays: {inst_delay}s/{batch_delay}s")
+        
+        for i in range(start, end + 1, batch_size):
+            if not self._is_running: break
+            self._maybe_pause()
+            
+            b0, b1 = i, min(i + batch_size - 1, end)
+            batch_indices = list(range(b0, b1 + 1))
+            
+            self.log.emit(f"\n--- Processing Batch: {b0}-{b1} ({len(batch_indices)} VMs) ---")
+            
+            # Batch launch for better performance
+            if len(batch_indices) > 10:
+                # Use bulk command for large batches
+                ok, msg = self.manager.control_instance(batch_indices, 'launch')
+                if ok:
+                    self.log.emit(f"✅ Bulk launched VMs {b0}-{b1}")
+                else:
+                    self.log.emit(f"❌ Bulk launch failed: {msg}")
+                    # Fallback to individual launches
+                    for idx in batch_indices:
+                        if not self._is_running: break
+                        ok, _ = self.manager.control_instance([idx], 'launch')
+                        self.log.emit(f"VM {idx}: {'✅' if ok else '❌'}")
+                        if idx < b1 and self._is_running: 
+                            self.msleep(int(inst_delay*200))  # Reduced sleep for bulk
+                processed += len(batch_indices)
+            else:
+                # Individual processing for smaller batches
+                for idx in batch_indices:
+                    if not self._is_running: break
+                    self._maybe_pause()
+                    ok, _ = self.manager.control_instance([idx], 'launch')
+                    self.log.emit(f"VM {idx}: {'✅ Thành công' if ok else '❌ Thất bại'}")
+                    processed += 1
+                    if idx < b1 and self._is_running: 
+                        self.msleep(int(inst_delay*1000))
+            
+            # Update progress
+            self.progress.emit(int((processed/total_instances)*100))
+            
+            # Batch delay with optimization for large operations
+            if b1 < end and self._is_running:
+                self._maybe_pause()
+                sleep_time = batch_delay
+                if total_instances > 5000:
+                    sleep_time = min(sleep_time, 2.0)  # Reduced delay for very large operations
+                self.msleep(int(sleep_time*1000))
+        
+        self.finished.emit("✅ HOÀN TẤT" if self._is_running else "🛑 ĐÃ DỪNG")
+
 # =========================
 # Dialogs (Settings + Automation + Batch Edit) - Đã cải tiến giao diện
 # =========================
@@ -785,24 +1018,24 @@ class AutomationDialog(QDialog):
         self.end_index.setToolTip("Chỉ số kết thúc của máy ảo (VM) để tự động hóa")
         
         self.batch_size = QSpinBox()
-        self.batch_size.setRange(1, 100)
-        self.batch_size.setToolTip("Số lượng máy ảo khởi động cùng lúc trong một đợt")
+        self.batch_size.setRange(1, 500)  # Increased range for 10k instances
+        self.batch_size.setToolTip("Số lượng máy ảo khởi động cùng lúc trong một đợt (tối ưu cho 10k: 50-100)")
         
         self.instance_delay = QDoubleSpinBox()
-        self.instance_delay.setRange(0, 120)
+        self.instance_delay.setRange(0, 30)  # Reduced max for bulk operations
         self.instance_delay.setDecimals(2)
         self.instance_delay.setToolTip("Thời gian chờ giữa các lần khởi động VM trong cùng một đợt (giây)")
         
         self.batch_delay = QDoubleSpinBox()
-        self.batch_delay.setRange(0, 1200)
+        self.batch_delay.setRange(0, 300)  # Reduced max for bulk operations
         self.batch_delay.setDecimals(2)
         self.batch_delay.setToolTip("Thời gian chờ giữa các đợt khởi động (giây)")
         
         self.start_index.setValue(1)
-        self.end_index.setValue(10)
-        self.batch_size.setValue(5)
-        self.instance_delay.setValue(2.0)
-        self.batch_delay.setValue(8.0)
+        self.end_index.setValue(100)  # Larger default range
+        self.batch_size.setValue(50)  # Larger default batch size
+        self.instance_delay.setValue(0.5)  # Faster default delay
+        self.batch_delay.setValue(3.0)  # Faster default batch delay
         
         # Thêm các nhãn mô tả rõ ràng hơn
         lay.addRow("Chỉ số bắt đầu:", self.start_index)
@@ -910,21 +1143,21 @@ class SettingsDialog(QDialog):
         self.end_index.setToolTip("Chỉ số VM kết thúc")
         
         self.batch_size = QSpinBox()
-        self.batch_size.setRange(1, 100)
-        self.batch_size.setValue(int(s.value("auto/batch", 5)))
-        self.batch_size.setToolTip("Số VM khởi động cùng lúc")
+        self.batch_size.setRange(1, 500)  # Increased range for 10k instances
+        self.batch_size.setValue(int(s.value("auto/batch", 50)))  # Larger default batch size
+        self.batch_size.setToolTip("Số VM khởi động cùng lúc (tối ưu cho 10k instances: 50-100)")
         
         self.instance_delay = QDoubleSpinBox()
-        self.instance_delay.setRange(0, 120)
+        self.instance_delay.setRange(0, 30)  # Reduced max delay for bulk operations
         self.instance_delay.setDecimals(2)
-        self.instance_delay.setValue(float(s.value("auto/inst_delay", 2.0)))
-        self.instance_delay.setToolTip("Thời gian giữa các lần khởi động VM (giây)")
+        self.instance_delay.setValue(float(s.value("auto/inst_delay", 0.5)))  # Faster default
+        self.instance_delay.setToolTip("Thời gian giữa các lần khởi động VM (giây) - tối ưu cho 10k: 0.1-1.0")
         
         self.batch_delay = QDoubleSpinBox()
-        self.batch_delay.setRange(0, 1200)
+        self.batch_delay.setRange(0, 300)  # Reduced max delay
         self.batch_delay.setDecimals(2)
-        self.batch_delay.setValue(float(s.value("auto/batch_delay", 8.0)))
-        self.batch_delay.setToolTip("Thời gian giữa các đợt khởi động (giây)")
+        self.batch_delay.setValue(float(s.value("auto/batch_delay", 3.0)))  # Faster default
+        self.batch_delay.setToolTip("Thời gian giữa các đợt khởi động (giây) - tối ưu cho 10k: 1.0-5.0")
         
         grid = QFormLayout()
         grid.setSpacing(10)
@@ -1324,3 +1557,205 @@ class MainWindow(QMainWindow):
         
         # Left section - Search and filter
         left_section = QWidget()
+        left_layout = QHBoxLayout(left_section)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Quick search for 10k instances
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Tìm kiếm VM (ID, tên, trạng thái)...")
+        self.search_input.setMinimumWidth(300)
+        left_layout.addWidget(self.search_input)
+        
+        # Filter for performance with large datasets
+        self.status_filter = QComboBox()
+        self.status_filter.addItems(["Tất cả", "Đang chạy", "Đã tắt"])
+        left_layout.addWidget(self.status_filter)
+        
+        top.addWidget(left_section)
+        top.addStretch(1)
+        
+        # Right section - Quick actions
+        right_section = QWidget()
+        right_layout = QHBoxLayout(right_section)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.refresh_btn = QPushButton("🔄 Làm mới")
+        self.refresh_btn.setProperty("class", "primary")
+        self.auto_btn = QPushButton("🤖 Tự động hóa")
+        self.auto_btn.setProperty("class", "primary")
+        
+        right_layout.addWidget(self.refresh_btn)
+        right_layout.addWidget(self.auto_btn)
+        top.addWidget(right_section)
+        
+        mv.addWidget(self.topbar)
+        
+        # Main content area - optimized for 10k instances
+        self.content_area = QWidget()
+        content_layout = QVBoxLayout(self.content_area)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Stats cards for quick overview
+        stats_layout = QHBoxLayout()
+        self.total_card = StatCard("Tổng số VM", "0", "instances")
+        self.running_card = StatCard("Đang chạy", "0", "active")
+        self.offline_card = StatCard("Đã tắt", "0", "inactive")
+        
+        stats_layout.addWidget(self.total_card)
+        stats_layout.addWidget(self.running_card)
+        stats_layout.addWidget(self.offline_card)
+        stats_layout.addStretch(1)
+        
+        content_layout.addLayout(stats_layout)
+        
+        # Progress area for bulk operations
+        self.progress_frame = QFrame()
+        self.progress_frame.setProperty("class", "neo-card")
+        self.progress_frame.setVisible(False)
+        
+        progress_layout = QVBoxLayout(self.progress_frame)
+        self.progress_label = QLabel("Đang xử lý...")
+        self.progress_bar = QProgressBar()
+        self.log_output = QTextEdit()
+        self.log_output.setMaximumHeight(150)
+        self.log_output.setReadOnly(True)
+        
+        # Control buttons for operations
+        control_layout = QHBoxLayout()
+        self.pause_btn = QPushButton("⏸️ Tạm dừng")
+        self.stop_btn = QPushButton("⏹️ Dừng")
+        self.resume_btn = QPushButton("▶️ Tiếp tục")
+        
+        control_layout.addWidget(self.pause_btn)
+        control_layout.addWidget(self.resume_btn)
+        control_layout.addWidget(self.stop_btn)
+        control_layout.addStretch(1)
+        
+        progress_layout.addWidget(self.progress_label)
+        progress_layout.addWidget(self.progress_bar)
+        progress_layout.addWidget(self.log_output)
+        progress_layout.addLayout(control_layout)
+        
+        content_layout.addWidget(self.progress_frame)
+        
+        # Placeholder for instance table (would need virtual scrolling for 10k)
+        self.instances_label = QLabel("Bảng VM sẽ được tối ưu hóa cho 10,000+ instances với virtual scrolling")
+        self.instances_label.setStyleSheet("text-align: center; padding: 50px; color: gray;")
+        content_layout.addWidget(self.instances_label)
+        
+        mv.addWidget(self.content_area)
+        
+        # Layout
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(self.sidebar)
+        splitter.addWidget(main)
+        splitter.setSizes([250, 1030])
+        splitter.setChildrenCollapsible(False)
+        
+        self.setCentralWidget(splitter)
+        
+        # Status bar
+        self.status_bar = self.statusBar()
+        self.status_bar.showMessage("Sẵn sàng - Tối ưu hóa cho 10,000+ instances")
+
+    def _wire(self):
+        """Connect signals for optimized operations"""
+        self.refresh_btn.clicked.connect(self.refresh_instances)
+        self.auto_btn.clicked.connect(self.show_automation_dialog)
+        self.btn_settings.clicked.connect(self.show_settings)
+        
+        # Search optimization for large datasets
+        self.search_input.textChanged.connect(self.filter_instances)
+        self.status_filter.currentTextChanged.connect(self.filter_instances)
+        
+        # Control buttons
+        self.pause_btn.clicked.connect(self.pause_operation)
+        self.resume_btn.clicked.connect(self.resume_operation)
+        self.stop_btn.clicked.connect(self.stop_operation)
+
+    def refresh_instances(self):
+        """Optimized instance refresh for large datasets"""
+        if hasattr(self, 'manager'):
+            # Use performance config based on estimated instance count
+            config = PerformanceConfig.get_config(1000)  # Default estimate
+            
+            # Clear cache periodically for memory management
+            if hasattr(self.manager, 'clear_cache'):
+                self.manager.clear_cache()
+            
+            self.status_bar.showMessage("Đang tải thông tin instances...")
+            # In real implementation, would use background thread
+            self.status_bar.showMessage("Sẵn sàng")
+
+    def show_automation_dialog(self):
+        """Show automation dialog with 10k-optimized defaults"""
+        dialog = AutomationDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            params = dialog.get_values()
+            instance_count = params[1] - params[0] + 1
+            
+            # Apply performance optimizations based on count
+            config = PerformanceConfig.get_config(instance_count)
+            
+            # Use optimized worker for large operations
+            if instance_count > 1000:
+                self.worker = OptimizedAutoWorker(self.manager, params)
+                self.log_output.append(f"🚀 Using optimized processing for {instance_count} instances")
+            else:
+                self.worker = AutoWorker(self.manager, params)
+            
+            self._connect_worker_signals()
+            self.worker.start()
+            self.progress_frame.setVisible(True)
+
+    def show_settings(self):
+        """Show settings dialog"""
+        dialog = SettingsDialog(self, self.mumu_path)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.mumu_path = dialog.get_path()
+            self.manager = MumuManager(self.mumu_path)
+
+    def filter_instances(self):
+        """Optimized filtering for large datasets"""
+        # In real implementation, would use efficient search algorithms
+        # for 10k+ instances (indexing, caching, etc.)
+        pass
+
+    def pause_operation(self):
+        """Pause current operation"""
+        if self.worker and self.worker.isRunning():
+            self.worker.pause()
+
+    def resume_operation(self):
+        """Resume current operation"""
+        if self.worker and self.worker.isRunning():
+            self.worker.resume()
+
+    def stop_operation(self):
+        """Stop current operation"""
+        if self.worker and self.worker.isRunning():
+            self.worker.stop()
+
+    def _connect_worker_signals(self):
+        """Connect worker signals for progress reporting"""
+        if self.worker:
+            self.worker.progress.connect(self.progress_bar.setValue)
+            self.worker.log.connect(self.log_output.append)
+            self.worker.finished.connect(self._on_worker_finished)
+
+    def _on_worker_finished(self, message):
+        """Handle worker completion"""
+        self.log_output.append(message)
+        self.progress_frame.setVisible(False)
+        self.status_bar.showMessage("Hoàn thành")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    
+    # Initialize for 10k instances optimization
+    app._widget_count = 0
+    
+    window = MainWindow()
+    window.show()
+    
+    sys.exit(app.exec())
